@@ -112,6 +112,7 @@ class OtpBase {
         return [
             'contact_id' => $this->contactId,
             'expires' => config('crunchzapp.otp.link.expires'),
+            'name' => config('crunchzapp.otp.link.name'),
             'message' => [
                 'prompt' => $this->prompt,
                 'success' => $this->successMessage,

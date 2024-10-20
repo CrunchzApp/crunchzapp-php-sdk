@@ -66,7 +66,7 @@ return [
             'allCapital' => true,
             /*
             |--------------------------------------------------------------------------
-            | The name of application who send this
+            | The name of application who send this or act as identifier
             |--------------------------------------------------------------------------
             */
             'name' => env('APP_NAME'), // otp name
@@ -95,6 +95,12 @@ return [
             |--------------------------------------------------------------------------
             */
             'prompt' => 'Give me a code to login at '.env('APP_NAME'),
+            /*
+            |--------------------------------------------------------------------------
+            | The name of application who send this or act as identifier
+            |--------------------------------------------------------------------------
+            */
+            'name' => env('APP_NAME'),
             /*
             |--------------------------------------------------------------------------
             | Respond from channel to user

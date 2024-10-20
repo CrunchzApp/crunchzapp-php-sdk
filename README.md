@@ -4,3 +4,6 @@
 
 # Documentation
 All the documentation are available in readme.io https://crunczhapp.readme.io/reference/laravel-php
+
+Register and use voucher code "25OFFCRZAPP" to get 25% OFF.
+Visit : https://www.crunchz.app
