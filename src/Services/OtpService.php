@@ -58,10 +58,7 @@ final class OtpService extends OtpBase
      */
     public function tokenHandler(): void
     {
-        $this->token = config('crunchzapp.channel.token');
-        if (config('crunchzapp.otp.is_global')) {
-            $this->token = config('crunchzapp.global.token');
-        }
+        $this->token = config('crunchzapp.token');
     }
 
     /**
