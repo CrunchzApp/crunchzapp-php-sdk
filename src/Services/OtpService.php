@@ -1,8 +1,8 @@
 <?php
 
-namespace Crunchzapp\Services;
+namespace CrunchzApp\Services;
 
-use Crunchzapp\Base\OtpBase;
+use CrunchzApp\Base\OtpBase;
 use Illuminate\Support\Facades\Http;
 
 final class OtpService extends OtpBase

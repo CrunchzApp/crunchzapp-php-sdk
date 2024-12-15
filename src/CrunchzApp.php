@@ -3,7 +3,7 @@
 namespace CrunchzApp;
 
 use CrunchzApp\Services\ChannelService;
-use Crunchzapp\Services\OtpService;
+use CrunchzApp\Services\OtpService;
 
 final class CrunchzApp {
 

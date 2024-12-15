@@ -2,10 +2,10 @@
 
 namespace CrunchzApp\Base;
 
-use Crunchzapp\Traits\ChatTrait;
-use Crunchzapp\Traits\ContactTrait;
-use Crunchzapp\Traits\GroupTrait;
-use Crunchzapp\Traits\MessageTrait;
+use CrunchzApp\Traits\ChatTrait;
+use CrunchzApp\Traits\ContactTrait;
+use CrunchzApp\Traits\GroupTrait;
+use CrunchzApp\Traits\MessageTrait;
 
 class WhatsAppBase {
     protected $client;

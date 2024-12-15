@@ -1,6 +1,6 @@
 <?php
 
-namespace Crunchzapp\Traits;
+namespace CrunchzApp\Traits;
 
 trait GroupTrait {
 

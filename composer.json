@@ -3,7 +3,7 @@
     "description": "PHP Package for CrunchzApp WhatsApp API",
     "autoload": {
         "psr-4": {
-            "Crunchzapp\\": "src/"
+            "CrunchzApp\\": "src/"
         }
     },
     "authors": [
@@ -15,7 +15,7 @@
     "extra": {
         "laravel": {
             "providers": [
-                "Crunchzapp\\CrunchzAppServiceProvider"
+                "CrunchzApp\\CrunchzAppServiceProvider"
             ]
         }
     },

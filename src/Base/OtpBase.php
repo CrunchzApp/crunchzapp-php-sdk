@@ -1,6 +1,6 @@
 <?php
 
-namespace Crunchzapp\Base;
+namespace CrunchzApp\Base;
 
 class OtpBase {
 
