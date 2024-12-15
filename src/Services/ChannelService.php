@@ -11,7 +11,7 @@ final class ChannelService extends WhatsAppBase {
     public function __construct()
     {
         $this->client = Http::baseUrl($this->endpoint);
-        $this->token = config('crunchzapp.channel.token');
+        $this->token = config('crunchzapp.token');
     }
 
     /**
@@ -62,7 +62,8 @@ final class ChannelService extends WhatsAppBase {
 
         try {
             $payload = $this->payload[0];
-            return $this->client->withToken($this->token)->{$payload['method']}($payload['path'], $payload['body'])->json();
+            return $this->payload;
+//            return $this->client->withToken($this->token)->{$payload['method']}($payload['path'], $payload['body'])->json();
         } catch (\Exception $e) {
             throw new \Exception($e->getMessage());
         }
