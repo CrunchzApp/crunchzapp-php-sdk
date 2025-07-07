@@ -51,7 +51,7 @@ trait MessageTrait
 
     /**
      * Send a text message
-     * 
+     *
      * @param string $message The text message to send
      * @return static
      * @throws InvalidArgumentException When message is empty
@@ -61,7 +61,7 @@ trait MessageTrait
         if (empty(trim($message))) {
             throw new InvalidArgumentException('Message cannot be empty');
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_TEXT, [
             'contact_id' => $this->getValidatedContactId(),
             'message' => $message
@@ -70,7 +70,7 @@ trait MessageTrait
 
     /**
      * Send an image message
-     * 
+     *
      * @param string $url The image URL
      * @param string|null $caption Optional image caption
      * @param string|null $mimeType Optional MIME type
@@ -81,12 +81,12 @@ trait MessageTrait
     public function image(string $url, ?string $caption = null, ?string $mimeType = null, ?string $filename = null): static
     {
         $this->validateUrl($url);
-        
+
         $body = [
             'contact_id' => $this->getValidatedContactId(),
             'caption' => $caption
         ];
-        
+
         if ($mimeType && $filename) {
             $body['file'] = [
                 'mimeType' => $mimeType,
@@ -96,13 +96,13 @@ trait MessageTrait
         } else {
             $body['url'] = $url;
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_IMAGE, $body);
     }
 
     /**
      * Send a location message
-     * 
+     *
      * @param float $latitude The latitude coordinate
      * @param float $longitude The longitude coordinate
      * @param string|null $title Optional location title
@@ -112,18 +112,18 @@ trait MessageTrait
     public function location(float $latitude, float $longitude, ?string $title = null): static
     {
         $this->validateCoordinates($latitude, $longitude);
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_LOCATION, [
             'contact_id' => $this->getValidatedContactId(),
-            'latitude' => $latitude,
-            'longitude' => $longitude,
+            'latitude' => (string) $latitude,
+            'longitude' => (string) $longitude,
             'title' => $title
         ]);
     }
 
     /**
      * Send a voice message
-     * 
+     *
      * @param string $audioUrl The voice file URL
      * @return static
      * @throws InvalidArgumentException When URL is invalid
@@ -131,7 +131,7 @@ trait MessageTrait
     public function voice(string $audioUrl): static
     {
         $this->validateUrl($audioUrl);
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_VOICE, [
             'contact_id' => $this->getValidatedContactId(),
             'audioUrl' => $audioUrl
@@ -140,7 +140,7 @@ trait MessageTrait
 
     /**
      * Send a video message
-     * 
+     *
      * @param string $videoUrl The video file URL
      * @param string|null $caption Optional video caption
      * @return static
@@ -149,7 +149,7 @@ trait MessageTrait
     public function video(string $videoUrl, ?string $caption = null): static
     {
         $this->validateUrl($videoUrl);
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_VIDEO, [
             'contact_id' => $this->getValidatedContactId(),
             'videoUrl' => $videoUrl,
@@ -159,7 +159,7 @@ trait MessageTrait
 
     /**
      * React to a message with an emoji
-     * 
+     *
      * @param string $messageId The message ID to react to
      * @param string $reaction The emoji reaction
      * @return static
@@ -173,7 +173,7 @@ trait MessageTrait
         if (empty(trim($reaction))) {
             throw new InvalidArgumentException('Reaction cannot be empty');
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_REACT, [
             'message_id' => $messageId,
             'reaction' => $reaction,
@@ -182,7 +182,7 @@ trait MessageTrait
 
     /**
      * Send a polling message
-     * 
+     *
      * @param string $title The poll question
      * @param array $options Array of poll options
      * @param bool $isMultipleAnswer Whether multiple answers are allowed
@@ -197,7 +197,7 @@ trait MessageTrait
         if (empty($options) || count($options) < 2) {
             throw new InvalidArgumentException('Poll must have at least 2 options');
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_POLLING, [
             'contact_id' => $this->getValidatedContactId(),
             'title' => $title,
@@ -208,7 +208,7 @@ trait MessageTrait
 
     /**
      * Star a message
-     * 
+     *
      * @param string $messageId The message ID to star
      * @param bool $starred Whether to star or unstar the message
      * @return static
@@ -219,7 +219,7 @@ trait MessageTrait
         if (empty(trim($messageId))) {
             throw new InvalidArgumentException('Message ID cannot be empty');
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_STAR, [
             'message_id' => $messageId,
             'starred' => $starred
@@ -228,7 +228,7 @@ trait MessageTrait
 
     /**
      * Delete a message
-     * 
+     *
      * @param string $messageId The message ID to delete
      * @return static
      * @throws InvalidArgumentException When message ID is empty
@@ -238,7 +238,7 @@ trait MessageTrait
         if (empty(trim($messageId))) {
             throw new InvalidArgumentException('Message ID cannot be empty');
         }
-        
+
         return $this->addMessagePayload(self::MESSAGE_TYPE_DELETE, [
             'message_id' => $messageId,
         ], 'DELETE');
@@ -246,7 +246,7 @@ trait MessageTrait
 
     /**
      * Mark a message as seen
-     * 
+     *
      * @param string $messageId The message ID to mark as seen
      * @return static
      * @throws InvalidArgumentException When message ID is empty
@@ -256,15 +256,15 @@ trait MessageTrait
         if (empty(trim($messageId))) {
             throw new InvalidArgumentException('Message ID cannot be empty');
         }
-        
+
         return $this->addMessagePayload('seen', [
             'message_id' => $messageId,
         ]);
     }
-    
+
     /**
      * Add a message payload to the request queue
-     * 
+     *
      * @param string $type The message type
      * @param array $body The request body
      * @param string $method The HTTP method
@@ -280,10 +280,10 @@ trait MessageTrait
         ];
         return $this;
     }
-    
+
     /**
      * Get validated contact ID
-     * 
+     *
      * @return string The validated contact ID
      * @throws \Exception When contact ID is not set
      */
@@ -294,10 +294,10 @@ trait MessageTrait
         }
         return $this->contactId;
     }
-    
+
     /**
      * Validate URL format
-     * 
+     *
      * @param string $url The URL to validate
      * @throws InvalidArgumentException When URL is invalid
      */
@@ -310,10 +310,10 @@ trait MessageTrait
             throw new InvalidArgumentException('Invalid URL format');
         }
     }
-    
+
     /**
      * Validate coordinates
-     * 
+     *
      * @param float $latitude The latitude coordinate
      * @param float $longitude The longitude coordinate
      * @throws InvalidArgumentException When coordinates are out of valid range
