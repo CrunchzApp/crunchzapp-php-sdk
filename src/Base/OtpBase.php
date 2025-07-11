@@ -2,117 +2,198 @@
 
 namespace CrunchzApp\Base;
 
-class OtpBase {
+use InvalidArgumentException;
+use RuntimeException;
+use Illuminate\Http\Client\PendingRequest;
 
-    protected $token;
-    protected $contactId;
-    protected $payload;
-    protected $client;
-    protected $code;
-    protected $type;
-    protected $endpoint = 'https://api.crunchz.app/api';
+abstract class OtpBase
+{
 
-    protected $prompt;
-    protected $successMessage;
-    protected $failedMessage;
-    protected $callbackSuccess;
-    protected $callbackFailed;
-    protected $expiredMessage;
+    protected ?string $token = null;
+    protected ?string $contactId = null;
+    protected array $payload = [];
+    protected ?PendingRequest $client = null;
+    protected ?string $code = null;
+    protected string $type;
+    protected string $endpoint = 'https://api.crunchz.app/api';
 
-    public function contact($contactId): static
+    protected ?string $prompt = null;
+    protected ?string $successMessage = null;
+    protected ?string $failedMessage = null;
+    protected ?string $callbackSuccess = null;
+    protected ?string $callbackFailed = null;
+    protected ?string $expiredMessage = null;
+
+    private const OTP_TYPE_CODE = 'code';
+    private const OTP_TYPE_LINK = 'link';
+    private const ERROR_CONTACT_ID_REQUIRED = 'Contact ID must be set before performing OTP operations';
+    private const ERROR_INVALID_URL = 'The URL must be valid';
+    private const ERROR_PROMPT_NOT_ALLOWED = 'You cannot declare prompt when the OTP type is code';
+    private const ERROR_RESPONSE_NOT_ALLOWED = 'You cannot declare response messages when the OTP type is code';
+    private const ERROR_CALLBACK_NOT_ALLOWED = 'You cannot declare callbacks when the OTP type is code';
+
+    /**
+     * Set the contact ID for OTP operations
+     *
+     * @param string $contactId The contact ID (phone number with country code)
+     * @return static
+     * @throws InvalidArgumentException When contact ID is invalid
+     */
+    public function contact(string $contactId): static
     {
-        $this->contactId = $contactId;
+        if (empty(trim($contactId))) {
+            throw new InvalidArgumentException('Contact ID cannot be empty');
+        }
+
+        $this->contactId = trim($contactId);
         return $this;
     }
 
-    public function bodyCode(): array
+    /**
+     * Generate request body for code-based OTP
+     *
+     * @return array The request body for code OTP
+     * @throws RuntimeException When contact ID is not set
+     */
+    protected function bodyCode(): array
     {
+        $this->validateContactId();
+
         return [
             'contact_id' => $this->contactId,
-            'length' => config('crunchzapp.otp.code.length'),
-            'useLetter' => config('crunchzapp.otp.code.useLetter'),
-            'useNumber' => config('crunchzapp.otp.code.useNumber'),
-            'allCapital' => config('crunchzapp.otp.code.allCapital'),
-            'name' => config('crunchzapp.otp.code.name'),
-            'expires' => config('crunchzapp.otp.code.expires')
+            'length' => config('crunchzapp.otp.code.length', 6),
+            'useLetter' => config('crunchzapp.otp.code.useLetter', false),
+            'useNumber' => config('crunchzapp.otp.code.useNumber', true),
+            'allCapital' => config('crunchzapp.otp.code.allCapital', false),
+            'name' => config('crunchzapp.otp.code.name', 'CrunchzApp'),
+            'expires' => config('crunchzapp.otp.code.expires', 300)
         ];
     }
 
-    public function bodyValidate(): array
+    /**
+     * Generate request body for OTP validation
+     *
+     * @return array The request body for validation
+     * @throws RuntimeException When contact ID or code is not set
+     */
+    protected function bodyValidate(): array
     {
+        $this->validateContactId();
+        $this->validateCode();
+
         return [
             'contact_id' => $this->contactId,
             'code' => $this->code,
         ];
     }
 
-    public function code($code): static
+    /**
+     * Set the OTP code for validation
+     *
+     * @param string $code The OTP code to validate
+     * @return static
+     * @throws InvalidArgumentException When code is invalid
+     */
+    public function code(string $code): static
     {
-        $this->code = $code;
+        if (empty(trim($code))) {
+            throw new InvalidArgumentException('OTP code cannot be empty');
+        }
+
+        $this->code = trim($code);
         return $this;
     }
 
-    public function prompt($message): static
+    /**
+     * Set the prompt message for link-based OTP
+     *
+     * @param string $message The prompt message
+     * @return static
+     * @throws InvalidArgumentException When message is invalid or OTP type is code
+     */
+    public function prompt(string $message): static
     {
-        if ($this->payload['type'] === 'link') {
-            $this->prompt = $message;
-            return $this;
-        } else {
-            throw new \Exception('You cannot declare prompt when the otp type was code');
+        if ($this->type !== self::OTP_TYPE_LINK) {
+            throw new InvalidArgumentException(self::ERROR_PROMPT_NOT_ALLOWED);
         }
+
+        if (empty(trim($message))) {
+            throw new InvalidArgumentException('Prompt message cannot be empty');
+        }
+
+        $this->prompt = trim($message);
+        return $this;
     }
 
     /**
-     * @throws \Exception
+     * Set response messages for link-based OTP
+     *
+     * @param string|null $successResponse Success response message
+     * @param string|null $failedResponse Failed response message
+     * @param string|null $expiredResponse Expired response message
+     * @return static
+     * @throws InvalidArgumentException When OTP type is code
      */
-    public function responseMessage($successResponse = null, $failedResponse = null, $expiredResponse = null): static
+    public function responseMessage(?string $successResponse = null, ?string $failedResponse = null, ?string $expiredResponse = null): static
     {
-        if ($this->payload['type'] === 'link') {
-            if (!is_null($successResponse)) {
-                $this->successMessage = $successResponse;
-            }
-            if (!is_null($failedResponse)) {
-                $this->failedMessage = $failedResponse;
-            }
-            if (!is_null($expiredResponse)) {
-                $this->expiredMessage = $expiredResponse;
-            }
-            return $this;
-        } else {
-            throw new \Exception('You cannot declare success response when the otp type was code');
+        if ($this->type !== self::OTP_TYPE_LINK) {
+            throw new InvalidArgumentException(self::ERROR_RESPONSE_NOT_ALLOWED);
         }
+
+        if ($successResponse !== null) {
+            $this->successMessage = trim($successResponse);
+        }
+        if ($failedResponse !== null) {
+            $this->failedMessage = trim($failedResponse);
+        }
+        if ($expiredResponse !== null) {
+            $this->expiredMessage = trim($expiredResponse);
+        }
+
+        return $this;
     }
 
-    public function callback($successCallback, $failedCallback)
+    /**
+     * Set callback URLs for link-based OTP
+     *
+     * @param string|null $successCallback Success callback URL
+     * @param string|null $failedCallback Failed callback URL
+     * @return static
+     * @throws InvalidArgumentException When OTP type is code or URLs are invalid
+     */
+    public function callback(?string $successCallback = null, ?string $failedCallback = null): static
     {
-        if ($this->payload['type'] === 'link') {
-            if (!is_null($successCallback)) {
-                if (filter_var($successCallback, FILTER_VALIDATE_URL)) {
-                    $this->callbackSuccess = $successCallback;
-                } else {
-                    throw new \Exception('The success link callback must be a valid url');
-                }
-            }
-
-            if (!is_null($failedCallback)) {
-                if (filter_var($failedCallback, FILTER_VALIDATE_URL)) {
-                    $this->callbackFailed = $failedCallback;
-                } else {
-                    throw new \Exception('The failed link callback must be a valid url');
-                }
-            }
-            return $this;
-        } else {
-            throw new \Exception('You cannot declare success callback when the otp type was code');
+        if ($this->type !== self::OTP_TYPE_LINK) {
+            throw new InvalidArgumentException(self::ERROR_CALLBACK_NOT_ALLOWED);
         }
+
+        if ($successCallback !== null) {
+            $this->validateUrl($successCallback, 'success callback');
+            $this->callbackSuccess = $successCallback;
+        }
+
+        if ($failedCallback !== null) {
+            $this->validateUrl($failedCallback, 'failed callback');
+            $this->callbackFailed = $failedCallback;
+        }
+
+        return $this;
     }
 
-    public function bodyLink(): array
+    /**
+     * Generate request body for link-based OTP
+     *
+     * @return array The request body for link OTP
+     * @throws RuntimeException When contact ID is not set
+     */
+    protected function bodyLink(): array
     {
+        $this->validateContactId();
+
         return [
             'contact_id' => $this->contactId,
-            'expires' => config('crunchzapp.otp.link.expires'),
-            'name' => config('crunchzapp.otp.link.name'),
+            'expires' => config('crunchzapp.otp.link.expires', 300),
+            'name' => config('crunchzapp.otp.link.name', 'CrunchzApp'),
             'message' => [
                 'prompt' => $this->prompt,
                 'success' => $this->successMessage,
@@ -124,5 +205,67 @@ class OtpBase {
                 'failed' => $this->callbackFailed
             ]
         ];
+    }
+
+    /**
+     * Validate that contact ID is set
+     *
+     * @throws RuntimeException When contact ID is not set
+     */
+    protected function validateContactId(): void
+    {
+        if (empty($this->contactId)) {
+            throw new RuntimeException(self::ERROR_CONTACT_ID_REQUIRED);
+        }
+    }
+
+    /**
+     * Validate that OTP code is set
+     *
+     * @throws RuntimeException When code is not set
+     */
+    protected function validateCode(): void
+    {
+        if (empty($this->code)) {
+            throw new RuntimeException('OTP code must be set before validation');
+        }
+    }
+
+    /**
+     * Validate URL format
+     *
+     * @param string $url The URL to validate
+     * @param string $context The context for error messages
+     * @throws InvalidArgumentException When URL is invalid
+     */
+    protected function validateUrl(string $url, string $context = 'URL'): void
+    {
+        if (empty(trim($url))) {
+            throw new InvalidArgumentException(sprintf('%s cannot be empty', ucfirst($context)));
+        }
+
+        if (!filter_var($url, FILTER_VALIDATE_URL)) {
+            throw new InvalidArgumentException(sprintf('%s must be a valid URL', ucfirst($context)));
+        }
+    }
+
+    /**
+     * Check if current OTP type is code
+     *
+     * @return bool True if type is code, false otherwise
+     */
+    protected function isCodeType(): bool
+    {
+        return $this->type === self::OTP_TYPE_CODE;
+    }
+
+    /**
+     * Check if current OTP type is link
+     *
+     * @return bool True if type is link, false otherwise
+     */
+    protected function isLinkType(): bool
+    {
+        return $this->type === self::OTP_TYPE_LINK;
     }
 }
