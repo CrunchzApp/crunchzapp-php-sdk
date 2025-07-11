@@ -13,18 +13,18 @@ trait GroupTrait
 
     /**
      * Get all groups
-     * 
+     *
      * @return static
      * @throws RuntimeException When token is missing
      */
     public function allGroup(): static
     {
-        return $this->addGroupPayload(self::GROUP_ACTION_ALL, [], 'GET');
+        return $this->addGroupPayload('', [], 'GET');
     }
 
     /**
      * Create a new group
-     * 
+     *
      * @param string $name The group name
      * @param array $participants Array of participant contact IDs
      * @return static
@@ -39,14 +39,14 @@ trait GroupTrait
         if (empty($participants)) {
             throw new InvalidArgumentException('At least one participant is required to create a group');
         }
-        
+
         // Validate participant format
         foreach ($participants as $participant) {
             if (!is_string($participant) || empty(trim($participant))) {
                 throw new InvalidArgumentException('All participants must be valid contact IDs');
             }
         }
-        
+
         return $this->addGroupPayload(self::GROUP_ACTION_CREATE, [
             'name' => trim($name),
             'participants' => $participants
@@ -55,7 +55,7 @@ trait GroupTrait
 
     /**
      * Get group participants
-     * 
+     *
      * @param string $groupId The group ID
      * @return static
      * @throws InvalidArgumentException When group ID is invalid
@@ -66,15 +66,15 @@ trait GroupTrait
         if (empty(trim($groupId))) {
             throw new InvalidArgumentException('Group ID cannot be empty');
         }
-        
+
         return $this->addGroupPayload(self::GROUP_ACTION_PARTICIPANTS, [
             'group_id' => $groupId
         ], 'GET');
     }
-    
+
     /**
      * Add a group payload to the request queue
-     * 
+     *
      * @param string $action The group action
      * @param array $body The request body
      * @param string $method The HTTP method
@@ -84,13 +84,13 @@ trait GroupTrait
     private function addGroupPayload(string $action, array $body, string $method = 'POST'): static
     {
         $this->validateToken();
-        
+
         $this->payload[] = [
             'method' => $method,
-            'path' => '/group/' . $action,
+            'path' => '/groups/' . $action,
             'body' => $body
         ];
-        
+
         return $this;
     }
 }

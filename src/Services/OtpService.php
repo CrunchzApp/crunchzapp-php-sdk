@@ -221,7 +221,7 @@ final class OtpService extends OtpBase
     {
         $this->validateContactId();
 
-        return match ($this->type) {
+        $payload = match ($this->type) {
             'code' => [
                 'type' => 'code',
                 'method_request' => 'POST',
@@ -241,5 +241,12 @@ final class OtpService extends OtpBase
             ],
             default => throw new InvalidArgumentException("Unsupported OTP type: {$this->type}")
         };
+
+        // Add body_validate only if code is set (for validation operations)
+        if ($this->type === 'code' && !empty($this->code)) {
+            $payload['body_validate'] = $this->bodyValidate();
+        }
+
+        return $payload;
     }
 }

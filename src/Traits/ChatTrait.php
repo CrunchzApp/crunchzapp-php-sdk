@@ -14,18 +14,18 @@ trait ChatTrait
 
     /**
      * Get all chats
-     * 
+     *
      * @return static
      * @throws RuntimeException When token is missing
      */
     public function allChat(): static
     {
-        return $this->addChatPayload(self::CHAT_ACTION_ALL, [], 'GET');
+        return $this->addChatPayload('', [], 'GET');
     }
 
     /**
      * Get chat details for a specific contact
-     * 
+     *
      * @param string $contactId The contact ID
      * @return static
      * @throws InvalidArgumentException When contact ID is invalid
@@ -36,7 +36,7 @@ trait ChatTrait
         if (empty(trim($contactId))) {
             throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        
+
         return $this->addChatPayload(self::CHAT_ACTION_DETAIL, [
             'contact_id' => $contactId
         ], 'GET');
@@ -44,7 +44,7 @@ trait ChatTrait
 
     /**
      * Archive a chat
-     * 
+     *
      * @param string $contactId The contact ID
      * @return static
      * @throws InvalidArgumentException When contact ID is invalid
@@ -55,7 +55,7 @@ trait ChatTrait
         if (empty(trim($contactId))) {
             throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        
+
         return $this->addChatPayload(self::CHAT_ACTION_ARCHIVE, [
             'contact_id' => $contactId
         ]);
@@ -63,7 +63,7 @@ trait ChatTrait
 
     /**
      * Unarchive a chat
-     * 
+     *
      * @param string $contactId The contact ID
      * @return static
      * @throws InvalidArgumentException When contact ID is invalid
@@ -74,15 +74,15 @@ trait ChatTrait
         if (empty(trim($contactId))) {
             throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        
+
         return $this->addChatPayload(self::CHAT_ACTION_UNARCHIVE, [
             'contact_id' => $contactId
         ]);
     }
-    
+
     /**
      * Add a chat payload to the request queue
-     * 
+     *
      * @param string $action The chat action
      * @param array $body The request body
      * @param string $method The HTTP method
@@ -92,13 +92,13 @@ trait ChatTrait
     private function addChatPayload(string $action, array $body, string $method = 'POST'): static
     {
         $this->validateToken();
-        
+
         $this->payload[] = [
             'method' => $method,
             'path' => '/chat/' . $action,
             'body' => $body
         ];
-        
+
         return $this;
     }
 }
