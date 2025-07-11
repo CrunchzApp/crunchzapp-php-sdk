@@ -3,83 +3,225 @@
 namespace CrunchzApp\Services;
 
 use CrunchzApp\Base\OtpBase;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
+use RuntimeException;
 
 final class OtpService extends OtpBase
 {
 
-    public function __construct($type)
+    /**
+     * Initialize OTP service with specified type
+     *
+     * @param string $type The OTP type ('code' or 'link')
+     * @throws InvalidArgumentException When type is invalid
+     * @throws RuntimeException When token is missing
+     */
+    /**
+     * Initialize OTP service with specified type
+     *
+     * @param string $type The OTP type ('code' or 'link')
+     * @throws InvalidArgumentException When type is invalid
+     * @throws RuntimeException When token is missing
+     */
+    public function __construct(string $type)
     {
+        $this->validateOtpType($type);
         $this->type = $type;
-        $this->payload = $this->getPayload();
 
         $this->tokenHandler();
+        if (empty($this->token)) {
+            throw new RuntimeException('CrunchzApp token is required. Please set it in your configuration.');
+        }
+
         $this->otpLinkConstruct();
-
-        $this->client = Http::baseUrl($this->endpoint)
-            ->withToken($this->token);
+        $this->client = Http::baseUrl($this->endpoint)->withToken($this->token);
     }
 
     /**
-     * @throws \Exception
+     * Send OTP to the specified contact
+     *
+     * @return array The JSON response from the API
+     * @throws RuntimeException When API request fails or contact ID is not set
      */
-    public function send()
+    public function send(): array
     {
         try {
             $payload = $this->getPayload();
-            $client = $this->client->post($payload['path_request'], $payload['body_request']);
-            return $client->json();
-        } catch (\Exception $e) {
-            throw new \Exception($e->getMessage());
-        }
-    }
+            $response = $this->client->post($payload['path_request'], $payload['body_request']);
 
-    /**
-     * @throws \Exception
-     */
-    public function validate($code)
-    {
-        try {
-            $this->code = $code;
-            $payload = $this->getPayload();
-            if ($payload['type'] === 'code') {
-                $client = $this->client->post($payload['path_validate'], $payload['body_validate']);
-                return $client->json();
-            } else {
-                throw new \Exception('Validate only accept otp code method');
+            if (!$response->successful()) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Failed to send OTP. API responded with status %d: %s',
+                        $response->status(),
+                        $response->body()
+                    )
+                );
             }
+
+            return $response->json();
         } catch (\Exception $e) {
-            throw new \Exception($e->getMessage());
+            if ($e instanceof RuntimeException) {
+                throw $e;
+            }
+            throw new RuntimeException('Failed to send OTP: ' . $e->getMessage(), 0, $e);
         }
     }
 
     /**
+     * Validate the provided OTP code
+     *
+     * @param string $code The OTP code to validate
+     * @return array The JSON response from the API
+     * @throws RuntimeException When API request fails or validation is not supported for this type
+     * @throws InvalidArgumentException When code is empty or type is not 'code'
+     */
+    public function validate(string $code): array
+    {
+        if (!$this->isCodeType()) {
+            throw new InvalidArgumentException('Validation is only supported for code-based OTP');
+        }
+
+        try {
+            // Set the code first before getting payload
+            $this->code($code);
+
+            // Now get the payload which will include the validation body
+            $payload = $this->getPayload();
+            $response = $this->client->post($payload['path_validate'], $payload['body_validate']);
+
+            if (!$response->successful()) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Failed to validate OTP. API responded with status %d: %s',
+                        $response->status(),
+                        $response->body()
+                    )
+                );
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            if ($e instanceof RuntimeException || $e instanceof InvalidArgumentException) {
+                throw $e;
+            }
+            throw new RuntimeException('Failed to validate OTP: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Generate OTP (alias for send method)
+     *
+     * @return array The JSON response from the API
+     * @throws RuntimeException When API request fails or contact ID is not set
+     */
+    public function generate(): array
+    {
+        return $this->send();
+    }
+
+    /**
+     * Validate the previously set OTP code
+     *
+     * @return array The JSON response from the API
+     * @throws RuntimeException When API request fails, validation is not supported for this type, or code is not set
+     * @throws InvalidArgumentException When type is not 'code'
+     */
+    public function validateOtp(): array
+    {
+        if (!$this->isCodeType()) {
+            throw new InvalidArgumentException('Validation is only supported for code-based OTP');
+        }
+
+        try {
+            // Get the payload which will validate that code is set
+            $payload = $this->getPayload();
+            $response = $this->client->post($payload['path_validate'], $payload['body_validate']);
+
+            if (!$response->successful()) {
+                throw new RuntimeException(
+                    sprintf(
+                        'Failed to validate OTP. API responded with status %d: %s',
+                        $response->status(),
+                        $response->body()
+                    )
+                );
+            }
+
+            return $response->json();
+        } catch (\Exception $e) {
+            if ($e instanceof RuntimeException || $e instanceof InvalidArgumentException) {
+                throw $e;
+            }
+            throw new RuntimeException('Failed to validate OTP: ' . $e->getMessage(), 0, $e);
+        }
+    }
+
+    /**
+     * Handle token configuration
+     *
      * @return void
      */
-    public function tokenHandler(): void
+    private function tokenHandler(): void
     {
         $this->token = config('crunchzapp.token');
     }
 
     /**
-     * @return void
+     * Validate OTP type during construction
+     *
+     * @param string $type The OTP type to validate
+     * @throws InvalidArgumentException When type is invalid
      */
-    public function otpLinkConstruct(): void
+    private function validateOtpType(string $type): void
     {
-        $this->prompt = config('crunchzapp.otp.link.prompt');
-        $this->successMessage = config('crunchzapp.otp.link.respond.success');
-        $this->failedMessage = config('crunchzapp.otp.link.respond.failed');
-        $this->expiredMessage = config('crunchzapp.otp.link.respond.expired');
-        $this->callbackSuccess = config('crunchzapp.otp.link.callback.success');
-        $this->callbackFailed = config('crunchzapp.otp.link.callback.failed');
+        $validTypes = ['code', 'link'];
+
+        if (empty(trim($type))) {
+            throw new InvalidArgumentException('OTP type cannot be empty');
+        }
+
+        if (!in_array($type, $validTypes, true)) {
+            throw new InvalidArgumentException(
+                sprintf(
+                    'Invalid OTP type "%s". Valid types are: %s',
+                    $type,
+                    implode(', ', $validTypes)
+                )
+            );
+        }
     }
 
     /**
-     * @return array
+     * Initialize link-based OTP configuration from config
+     *
+     * @return void
+     */
+    private function otpLinkConstruct(): void
+    {
+        if ($this->isLinkType()) {
+            $this->prompt = config('crunchzapp.otp.link.prompt');
+            $this->successMessage = config('crunchzapp.otp.link.respond.success');
+            $this->failedMessage = config('crunchzapp.otp.link.respond.failed');
+            $this->expiredMessage = config('crunchzapp.otp.link.respond.expired');
+            $this->callbackSuccess = config('crunchzapp.otp.link.callback.success');
+            $this->callbackFailed = config('crunchzapp.otp.link.callback.failed');
+        }
+    }
+
+    /**
+     * Get the complete payload structure for OTP operations
+     *
+     * @return array The payload structure with paths and request bodies
+     * @throws RuntimeException When contact ID is not set
      */
     public function getPayload(): array
     {
-        return match ($this->type) {
+        $this->validateContactId();
+
+        $payload = match ($this->type) {
             'code' => [
                 'type' => 'code',
                 'method_request' => 'POST',
@@ -88,8 +230,7 @@ final class OtpService extends OtpBase
                 'path_global_request' => '/otp/code/global',
                 'path_validate' => '/otp/code/validate',
                 'path_global_validate' => '/otp/code/validate',
-                'body_request' => $this->bodyCode(),
-                'body_validate' => $this->bodyValidate()
+                'body_request' => $this->bodyCode()
             ],
             'link' => [
                 'type' => 'link',
@@ -97,7 +238,15 @@ final class OtpService extends OtpBase
                 'path_request' => '/otp/link/request',
                 'path_global_request' => '/otp/link/global',
                 'body_request' => $this->bodyLink()
-            ]
+            ],
+            default => throw new InvalidArgumentException("Unsupported OTP type: {$this->type}")
         };
+
+        // Add body_validate only if code is set (for validation operations)
+        if ($this->type === 'code' && !empty($this->code)) {
+            $payload['body_validate'] = $this->bodyValidate();
+        }
+
+        return $payload;
     }
 }

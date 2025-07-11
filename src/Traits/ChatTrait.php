@@ -2,71 +2,103 @@
 
 namespace CrunchzApp\Traits;
 
-trait ChatTrait {
+use InvalidArgumentException;
+use RuntimeException;
+
+trait ChatTrait
+{
+    private const CHAT_ACTION_ALL = 'all';
+    private const CHAT_ACTION_DETAIL = 'detail';
+    private const CHAT_ACTION_ARCHIVE = 'archive';
+    private const CHAT_ACTION_UNARCHIVE = 'unarchive';
 
     /**
-     * @throws \Exception
+     * Get all chats
+     *
+     * @return static
+     * @throws RuntimeException When token is missing
      */
-    public function allChat($limit = 10, $offset = 0)
+    public function allChat(): static
     {
-        if (is_null($this->token)) {
-            throw new \Exception('Channel token is required');
-        }
-        $client = $this->client->withToken($this->token)->get('chat', [
-            'limit' => $limit,
-            'offset' => $offset
-        ]);
-        return $client->json();
+        return $this->addChatPayload('', [], 'GET');
     }
 
     /**
-     * @throws \Exception
+     * Get chat details for a specific contact
+     *
+     * @param string $contactId The contact ID
+     * @return static
+     * @throws InvalidArgumentException When contact ID is invalid
+     * @throws RuntimeException When token is missing
      */
-    public function chatDetail()
+    public function chatDetail(string $contactId): static
     {
-        if (is_null($this->token)) {
-            throw new \Exception('Channel token is required');
+        if (empty(trim($contactId))) {
+            throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        if (is_null($this->contactId)) {
-            throw new \Exception('Contact Id is required');
-        }
-        $client = $this->client->withToken($this->token)->get('chat/detail', [
-            'contact_id' => $this->contactId
-        ]);
-        return $client->json();
+
+        return $this->addChatPayload(self::CHAT_ACTION_DETAIL, [
+            'contact_id' => $contactId
+        ], 'GET');
     }
 
     /**
-     * @throws \Exception
+     * Archive a chat
+     *
+     * @param string $contactId The contact ID
+     * @return static
+     * @throws InvalidArgumentException When contact ID is invalid
+     * @throws RuntimeException When token is missing
      */
-    public function archiveChat()
+    public function archiveChat(string $contactId): static
     {
-        if (is_null($this->token)) {
-            throw new \Exception('Channel token is required');
+        if (empty(trim($contactId))) {
+            throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        if (is_null($this->contactId)) {
-            throw new \Exception('Contact Id is required');
-        }
-        $client = $this->client->withToken($this->token)->post('chat/archive', [
-            'contact_id' => $this->contactId
+
+        return $this->addChatPayload(self::CHAT_ACTION_ARCHIVE, [
+            'contact_id' => $contactId
         ]);
-        return $client->json();
     }
 
     /**
-     * @throws \Exception
+     * Unarchive a chat
+     *
+     * @param string $contactId The contact ID
+     * @return static
+     * @throws InvalidArgumentException When contact ID is invalid
+     * @throws RuntimeException When token is missing
      */
-    public function unArchiveChat()
+    public function unArchiveChat(string $contactId): static
     {
-        if (is_null($this->token)) {
-            throw new \Exception('Channel token is required');
+        if (empty(trim($contactId))) {
+            throw new InvalidArgumentException('Contact ID cannot be empty');
         }
-        if (is_null($this->contactId)) {
-            throw new \Exception('Contact Id is required');
-        }
-        $client = $this->client->withToken($this->token)->post('chat/un-archive', [
-            'contact_id' => $this->contactId
+
+        return $this->addChatPayload(self::CHAT_ACTION_UNARCHIVE, [
+            'contact_id' => $contactId
         ]);
-        return $client->json();
+    }
+
+    /**
+     * Add a chat payload to the request queue
+     *
+     * @param string $action The chat action
+     * @param array $body The request body
+     * @param string $method The HTTP method
+     * @return static
+     * @throws RuntimeException When token is missing
+     */
+    private function addChatPayload(string $action, array $body, string $method = 'POST'): static
+    {
+        $this->validateToken();
+
+        $this->payload[] = [
+            'method' => $method,
+            'path' => '/chat/' . $action,
+            'body' => $body
+        ];
+
+        return $this;
     }
 }
