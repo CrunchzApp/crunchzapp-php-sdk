@@ -3,27 +3,94 @@
 namespace CrunchzApp\Services;
 
 use CrunchzApp\Base\BaseService;
+use CrunchzApp\Http\Client;
 use InvalidArgumentException;
 use RuntimeException;
 
+/**
+ * Service for handling OTP (One-Time Password) operations.
+ *
+ * This service allows you to send and validate OTPs via WhatsApp.
+ * It supports two types of OTPs: 'code' and 'link'.
+ */
 final class OtpService extends BaseService
 {
+    /**
+     * The type of OTP to use ('code' or 'link').
+     *
+     * @var string
+     */
     private string $type;
+
+    /**
+     * The OTP code.
+     *
+     * @var string|null
+     */
     private ?string $code = null;
+
+    /**
+     * The prompt message for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $prompt = null;
+
+    /**
+     * The success message for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $successMessage = null;
+
+    /**
+     * The failed message for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $failedMessage = null;
+
+    /**
+     * The success callback URL for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $callbackSuccess = null;
+
+    /**
+     * The failed callback URL for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $callbackFailed = null;
+
+    /**
+     * The expired message for link-based OTPs.
+     *
+     * @var string|null
+     */
     private ?string $expiredMessage = null;
 
-    public function __construct($client, string $type)
+    /**
+     * Create a new OtpService instance.
+     *
+     * @param Client $client The HTTP client instance.
+     * @param string $type The type of OTP to use ('code' or 'link').
+     * @throws InvalidArgumentException If the OTP type is invalid.
+     */
+    public function __construct(Client $client, string $type)
     {
         parent::__construct($client);
         $this->validateOtpType($type);
         $this->type = $type;
     }
 
+    /**
+     * Send the OTP request.
+     *
+     * @return array The API response.
+     * @throws RuntimeException If the contact ID is not set.
+     */
     public function send(): array
     {
         $this->validateContactId();
@@ -32,6 +99,14 @@ final class OtpService extends BaseService
         return $this->client->post($path, $body);
     }
 
+    /**
+     * Validate an OTP code.
+     *
+     * @param string $code The OTP code to validate.
+     * @return array The API response.
+     * @throws InvalidArgumentException If the OTP type is not 'code'.
+     * @throws RuntimeException If the contact ID is not set.
+     */
     public function validate(string $code): array
     {
         if ($this->type !== 'code') {
@@ -42,6 +117,13 @@ final class OtpService extends BaseService
         return $this->client->post('/otp/code/validate', $this->bodyValidate());
     }
 
+    /**
+     * Set the OTP code for validation.
+     *
+     * @param string $code The OTP code.
+     * @return static The current service instance.
+     * @throws InvalidArgumentException If the code is empty.
+     */
     public function code(string $code): static
     {
         if (empty(trim($code))) {
@@ -51,6 +133,11 @@ final class OtpService extends BaseService
         return $this;
     }
 
+    /**
+     * Get the request body for a code-based OTP.
+     *
+     * @return array The request body.
+     */
     private function bodyCode(): array
     {
         return [
@@ -60,6 +147,13 @@ final class OtpService extends BaseService
         ];
     }
 
+    /**
+     * Set the prompt message for a link-based OTP.
+     *
+     * @param string $message The prompt message.
+     * @return static The current service instance.
+     * @throws InvalidArgumentException If the message is empty or the OTP type is not 'link'.
+     */
     public function prompt(string $message): static
     {
         if ($this->type !== 'link') {
@@ -72,6 +166,15 @@ final class OtpService extends BaseService
         return $this;
     }
 
+    /**
+     * Set the response messages for a link-based OTP.
+     *
+     * @param string|null $successResponse The message to show on successful validation.
+     * @param string|null $failedResponse The message to show on failed validation.
+     * @param string|null $expiredResponse The message to show when the OTP has expired.
+     * @return static The current service instance.
+     * @throws InvalidArgumentException If the OTP type is not 'link'.
+     */
     public function responseMessage(?string $successResponse = null, ?string $failedResponse = null, ?string $expiredResponse = null): static
     {
         if ($this->type !== 'link') {
@@ -89,6 +192,14 @@ final class OtpService extends BaseService
         return $this;
     }
 
+    /**
+     * Set the callback URLs for a link-based OTP.
+     *
+     * @param string|null $successCallback The URL to call on successful validation.
+     * @param string|null $failedCallback The URL to call on failed validation.
+     * @return static The current service instance.
+     * @throws InvalidArgumentException If the URLs are invalid or the OTP type is not 'link'.
+     */
     public function callback(?string $successCallback = null, ?string $failedCallback = null): static
     {
         if ($this->type !== 'link') {
