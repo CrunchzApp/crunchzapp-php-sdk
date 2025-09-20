@@ -26,53 +26,46 @@
 
 ## 📦 Installation
 
-Install the package via Composer:
+You can install the package via Composer:
 
 ```bash
 composer require crunchzapp/crunchzapp-php-sdk
 ```
 
-### Laravel Setup
+### For Laravel Users
 
-1. **Publish the configuration file:**
+The package will be automatically discovered and registered in Laravel applications.
 
-```bash
-php artisan vendor:publish --tag=crunchzapp-config
-```
+1.  **Publish the configuration file:**
 
-2. **Set your API token in `.env`:**
+    ```bash
+    php artisan vendor:publish --tag=crunchzapp-config
+    ```
 
-```env
-CRUNCHZAPP_TOKEN=your_api_token_here
-CRUNCHZAPP_API_URL=https://api.crunchz.app
-CRUNCHZAPP_TIMEOUT=30
-```
+    This will create a `config/crunchzapp.php` file in your application that you can modify to configure the SDK.
 
-3. **Configure OTP settings in `config/crunchzapp.php`:**
+2.  **Set your API Token:**
+
+    Add your CrunchzApp API token to your `.env` file. You can get your token from the [CrunchzApp Dashboard](https://crunchz.app).
+
+    ```env
+    CRUNCHZAPP_TOKEN="your-api-token"
+    ```
+
+### For Non-Laravel Users
+
+If you are not using Laravel, you can instantiate the `CrunchzApp` class manually:
 
 ```php
-return [
-    'timeout' => env('CRUNCHZAPP_TIMEOUT', 30),
-    'token' => env('CRUNCHZAPP_TOKEN'),
-    'api_url' => env('CRUNCHZAPP_API_URL', 'https://api.crunchz.app'),
-    
-    'otp' => [
-        'code' => [
-            'length' => 6,
-            'useLetter' => false,
-            'useNumber' => true,
-            'allCapital' => false,
-            'name' => 'Your App Name',
-            'expires' => 300, // 5 minutes
-            // ... more configuration
-        ],
-        'link' => [
-            'name' => 'Your App Name',
-            'expires' => 300,
-            // ... more configuration
-        ]
-    ]
-];
+require 'vendor/autoload.php';
+
+use CrunchzApp\CrunchzApp;
+
+$token = 'your-api-token';
+$crunchz = new CrunchzApp($token);
+
+// You can now use the $crunchz object to interact with the API
+$response = $crunchz->channel()->health();
 ```
 
 ## 🔧 Basic Usage
@@ -145,11 +138,9 @@ $validationResponse = $otpService
     ->validate('123456');
 
 // Alternative: Set code first, then validate
-$otpService
+$validationResponse = $otpService
     ->contact('1234567890@c.us')
-    ->code('123456');
-    
-$validationResponse = $otpService->validateOtp();
+    ->validate('123456');
 ```
 
 #### Link-based OTP
@@ -291,52 +282,72 @@ The configuration file `config/crunchzapp.php` allows you to customize:
 
 ## 📚 API Reference
 
-### CrunchzApp Main Class
+The SDK is designed to be fluent, allowing you to chain methods together to build your requests.
 
-- `channel()`: Get channel service for messaging and contact management
-- `otp(string $type)`: Get OTP service ('code' or 'link')
+### `CrunchzApp`
 
-### Channel Service Methods
+The main entry point of the SDK.
 
-#### Messaging
-- `contact(string $contactId)`: Set target contact
-- `text(string $message)`: Send text message
-- `image(string $url, ?string $caption)`: Send image
-- `video(string $url, ?string $caption)`: Send video
-- `voice(string $audioUrl)`: Send voice message
-- `location(float $lat, float $lng, ?string $title)`: Send location
-- `react(string $messageId, string $reaction)`: React to message
-- `polling(string $title, array $options, bool $multiple)`: Send poll
-- `startTyping()` / `stopTyping()`: Typing indicators
+- `new CrunchzApp(?string $token = null)`: Creates a new SDK instance. The token is optional if you have it configured in your `.env` file (for Laravel users).
+- `channel(): ChannelService`: Returns an instance of the `ChannelService` for handling messaging, contacts, groups, and chats.
+- `otp(string $type): OtpService`: Returns an instance of the `OtpService` for handling One-Time Passwords. The `$type` can be either `'code'` or `'link'`.
 
-#### Contacts
-- `allContact()`: Get all contacts
-- `detail(string $contactId)`: Get contact details
-- `picture(string $contactId)`: Get contact picture
+### `ChannelService`
 
-#### Chats
-- `allChat()`: Get all chats
-- `chatDetail(string $contactId)`: Get chat details
-- `archiveChat(string $contactId)`: Archive chat
-- `unArchiveChat(string $contactId)`: Unarchive chat
+Provides methods for all channel-related interactions.
 
-#### Groups
-- `allGroup()`: Get all groups
-- `createGroup(string $name, array $participants)`: Create group
-- `participants(string $groupId)`: Get group participants
+**Execution Methods:**
 
-#### Execution
-- `send()`: Execute single request
-- `sendPool()`: Execute multiple requests in parallel
+- `send(): array`: Sends a single request. This should be the last method in a chain for single requests.
+- `sendPool(): array`: Sends multiple requests in parallel.
 
-### OTP Service Methods
+**Messaging:**
 
-- `contact(string $contactId)`: Set target contact
-- `code(string $code)`: Set OTP code (for validation)
-- `send()`: Send OTP
-- `validate(string $code)`: Validate OTP code
-- `validateOtp()`: Validate previously set OTP code
-- `generate()`: Alias for send()
+- `contact(string $contactId)`: Sets the recipient's contact ID.
+- `text(string $message)`: Sends a plain text message.
+- `image(string $url, ?string $caption = null, ...)`: Sends an image from a URL.
+- `video(string $videoUrl, ?string $caption = null)`: Sends a video from a URL.
+- `voice(string $audioUrl)`: Sends a voice message from a URL.
+- `location(float $latitude, float $longitude, ?string $title = null)`: Sends a location.
+- `react(string $messageId, string $reaction)`: Reacts to a specific message.
+- `polling(string $title, array $options, bool $isMultipleAnswer = false)`: Creates a poll.
+- `star(string $messageId, bool $starred = true)`: Stars or unstars a message.
+- `delete(string $messageId)`: Deletes a message.
+- `seen(string $messageId)`: Marks a message as seen.
+- `startTyping()`: Shows a "typing..." indicator in the chat.
+- `stopTyping()`: Hides the "typing..." indicator.
+
+**Contact Management:**
+
+- `allContact()`: Retrieves a list of all contacts.
+- `detail(string $contactId)`: Gets detailed information about a specific contact.
+- `picture(string $contactId)`: Gets the profile picture URL of a contact.
+- `checkPhoneNumber(string $phoneNumber, bool $toVariable = false)`: Checks if a phone number is registered on WhatsApp.
+
+**Chat Management:**
+
+- `allChat()`: Retrieves a list of all chats.
+- `chatDetail(string $contactId)`: Gets detailed information about a specific chat.
+- `archiveChat(string $contactId)`: Archives a chat.
+- `unArchiveChat(string $contactId)`: Unarchives a chat.
+
+**Group Management:**
+
+- `allGroup()`: Retrieves a list of all groups.
+- `createGroup(string $name, array $participants)`: Creates a new group.
+- `participants(string $groupId)`: Retrieves the list of participants in a group.
+
+### `OtpService`
+
+Provides methods for sending and validating OTPs.
+
+- `contact(string $contactId)`: Sets the recipient's contact ID for the OTP.
+- `send(): array`: Sends the configured OTP.
+- `validate(string $code): array`: Validates a code-based OTP.
+- `code(string $code)`: Sets the code for validation (for code-based OTP).
+- `prompt(string $message)`: Sets a custom prompt message (for link-based OTP).
+- `responseMessage(?string $success, ?string $failed, ?string $expired)`: Sets custom success, failure, and expired messages (for link-based OTP).
+- `callback(?string $successUrl, ?string $failedUrl)`: Sets callback URLs for success and failure events (for link-based OTP).
 
 ## 🤝 Contributing
 
